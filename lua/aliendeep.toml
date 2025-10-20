@@ -1,0 +1,20 @@
+[information]
+ name = "Aliendeep"
+ background = "dark"
+ author = 'Paradise'
+
+[palette]
+ bg = '#000b1e'
+ fg = '#a5008b'
+ bgdark = '#a5008b'
+
+ white = '#00000e'
+ gray = '#000020'
+ blue = '#9bf000'
+ green = '#09f899'
+ cyan = '0x90005e'
+ red = '#dc008e'
+ orange = '#FF7605'
+ yellow = '#FFED05'
+ purple = '#FF056D'
+ magenta = '#6605FF'

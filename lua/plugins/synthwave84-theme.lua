@@ -17,9 +17,9 @@ return {
 					local shade = color.shade
 					local tint = color.tint
 					return {
-						bg = "#10001e",
-						bgdark = darken("#10001e", 20),
-						cyan = "#49eaff",
+						bg = "#00001a",
+						bgdark = darken("#00001a", 20),
+						cyan = "#0eee9e",
 						red = "#ff1e34",
 						yellow = "#ffe756",
 						orange = "#f38e21",

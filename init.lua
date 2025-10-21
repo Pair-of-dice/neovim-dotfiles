@@ -181,6 +181,11 @@ vim.lsp.enable("markdown_oxide")
 vim.lsp.enable("omnisharp")
 vim.lsp.enable("zls")
 vim.lsp.enable("tombi")
+vim.lsp.enable("html")
+vim.lsp.enable("css_variables")
+vim.lsp.enable("cssls")
+vim.lsp.enable("biome")
+vim.lsp.enable("ts_ls")
 --}}}
 --Lua{{{
 vim.lsp.config("lua_ls", {
@@ -325,7 +330,182 @@ vim.lsp.config("tombi", {
 	root_markers = { "tombi.toml", "pyproject.toml", ".git" },
 })
 --}}}
+--html{{{
+vim.lsp.config("html", {
+	cmd = { "vscode-html-language-server", "--stdio" },
+	filetyps = { "html", "templ" },
+	init_options = {
+		configurationSection = { "html", "css", "javascript" },
+		embeddedLanguages = {
+			css = true,
+			javascript = true,
+		},
+		provideFormatter = false,
+	},
+	root_markers = { "package.json", ".git" },
+	settings = {},
+})
+--}}}
+--css_variables{{{
+vim.lsp.config("css_variables", {
+	cmd = { "css-variables-language-server", "--stdio" },
+	filetypes = { "css", "scss", "less" },
+	root_markers = { ".git" },
+	settigs = {
+		cssVariables = {
+			blacklistFolders = {
+				"**/.cache",
+				"**/.DS_Store",
+				"**/.git",
+				"**/.hg",
+				"**/.next",
+				"**/.svn",
+				"**/bower_components",
+				"**/CVS",
+				"**/dist",
+				"**/node_modules",
+				"**/tests",
+				"**/tmp",
+			},
+			lookupFiles = { "**/*.less", "**/*.scss", "**/*.sass", "**/*.css" },
+		},
+	},
+})
+--}}}
+--cssls{{{
+vim.lsp.config("cssls", {
+	cmd = { "vscode-css-language-server", "--stdio" },
+	filetypes = { "css", "scss", "less" },
+	init_options = {
+		provideFormatter = true,
+	},
+	root_markers = { "package.json", ".git" },
+	settings = {
+		css = {
+			validate = true,
+		},
+		less = {
+			validate = true,
+		},
+		scss = {
+			validate = true,
+		},
+	},
+})
+--}}}
+--Biome{{{
+vim.lsp.config("biome", {
+	cmd = { "biome" },
+	filetypes = {
+		"astro",
+		"graphql",
+		"javascript",
+		"javascriptreact",
+		"svelte",
+		"typescript",
+		"typescript.tsx",
+		"typescriptreact",
+		"vue",
+	},
+	root_dir = function(bufnr, on_dir)
+		-- The project root is where the LSP can be started from
+		-- As stated in the documentation above, this LSP supports monorepos and simple projects.
+		-- We select then from the project root, which is identified by the presence of a package
+		-- manager lock file.
+		local root_markers = { "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb", "bun.lock" }
+		-- Give the root markers equal priority by wrapping them in a table
+		root_markers = vim.fn.has("nvim-0.11.3") == 1 and { root_markers, { ".git" } }
+			or vim.list_extend(root_markers, { ".git" })
+		-- We fallback to the current working directory if no project root is found
+		local project_root = vim.fs.root(bufnr, root_markers) or vim.fn.getcwd()
 
+		-- We know that the buffer is using Biome if it has a config file
+		-- in its directory tree.
+		local filename = vim.api.nvim_buf_get_name(bufnr)
+		local biome_config_files = { "biome.json", "biome.jsonc" }
+		local is_buffer_using_biome = vim.fs.find(biome_config_files, {
+			path = filename,
+			type = "file",
+			limit = 1,
+			upward = true,
+			stop = vim.fs.dirname(project_root),
+		})[1]
+		if not is_buffer_using_biome then
+			return
+		end
+
+		on_dir(project_root)
+	end,
+	workspace_required = true,
+})
+--}}}
+--ts_ls(typescript and javascript ls){{{
+vim.lsp.config("ts_ls", {
+	cmd = { "typescript-language-server", "--stdio" },
+	filetypes = { "javascript", "javascriptreact", "javascript.jsx", "typescript", "typescriptreact", "typescript.tsx" },
+	commands = {
+		["editor.action.showReferences"] = function(command, ctx)
+			local client = assert(vim.lsp.get_client_by_id(ctx.client_id))
+			local file_uri, position, references = unpack(command.arguments)
+
+			local quickfix_items = vim.lsp.util.locations_to_items(references, client.offset_encoding)
+			vim.fn.setqflist({}, " ", {
+				title = command.title,
+				items = quickfix_items,
+				context = {
+					command = command,
+					bufnr = ctx.bufnr,
+				},
+			})
+		end,
+	},
+	root_dir = function(bufnr, on_dir)
+		-- The project root is where the LSP can be started from
+		-- As stated in the documentation above, this LSP supports monorepos and simple projects.
+		-- We select then from the project root, which is identified by the presence of a package
+		-- manager lock file.
+		local root_markers = { "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb", "bun.lock" }
+		-- Give the root markers equal priority by wrapping them in a table
+		root_markers = vim.fn.has("nvim-0.11.3") == 1 and { root_markers, { ".git" } }
+			or vim.list_extend(root_markers, { ".git" })
+		-- We fallback to the current working directory if no project root is found
+		local project_root = vim.fs.root(bufnr, root_markers) or vim.fn.getcwd()
+
+		on_dir(project_root)
+	end,
+	handlers = {
+		-- handle rename request for certain code actions like extracting functions / types
+		["_typescript.rename"] = function(_, result, ctx)
+			local client = assert(vim.lsp.get_client_by_id(ctx.client_id))
+			vim.lsp.util.show_document({
+				uri = result.textDocument.uri,
+				range = {
+					start = result.position,
+					["end"] = result.position,
+				},
+			}, client.offset_encoding)
+			vim.lsp.buf.rename()
+			return vim.NIL
+		end,
+	},
+  on_attach = function(client, bufnr)
+    -- ts_ls provides `source.*` code actions that apply to the whole file. These only appear in
+    -- `vim.lsp.buf.code_action()` if specified in `context.only`.
+    vim.api.nvim_buf_create_user_command(bufnr, 'LspTypescriptSourceAction', function()
+      local source_actions = vim.tbl_filter(function(action)
+        return vim.startswith(action, 'source.')
+      end, client.server_capabilities.codeActionProvider.codeActionKinds)
+
+      vim.lsp.buf.code_action({
+        context = {
+          only = source_actions,
+        },
+      })
+    end, {})
+  end,
+})
+
+--}}}
 --}}}
 --Colorizer{{{
 require("colorizer").setup({
@@ -484,7 +664,41 @@ require("conform").setup({
 		cpp = { "clang-format" },
 		cs = { "clang-format" },
 		c = { "clang-format" },
+		css = {"biome","format"},
+		javascript = {"biome","format"},
+		html = {"htmlbeautifier"}
 	},
 })
 
+--}}}
+--Luasnip configuration{{{
+local ls = require("luasnip")
+vim.keymap.set({ "i" }, "<C-p>", function()
+	ls.expand()
+end, { silent = true })
+vim.keymap.set({ "i", "s" }, "<C-k>", function()
+	ls.jump(1)
+end, { silent = true })
+vim.keymap.set({ "i", "s" }, "<C-j>", function()
+	ls.jump(-1)
+end, { silent = true })
+
+vim.keymap.set({ "i", "s" }, "<C-E>", function()
+	if ls.choice_active() then
+		ls.change_choice(1)
+	end
+end, { silent = true })
+
+--Enable (broadcasting) snippet capability for completion
+require("luasnip.loaders.from_vscode").lazy_load()
+
+local capabilities = vim.lsp.protocol.make_client_capabilities()
+capabilities.textDocument.completion.completionItem.snippetSupport = true
+
+vim.lsp.config("html", {
+	capabilities = capabilities,
+})
+vim.lsp.config("cssls", {
+	capabilities = capabilities,
+})
 --}}}

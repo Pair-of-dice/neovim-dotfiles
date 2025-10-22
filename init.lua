@@ -186,6 +186,7 @@ vim.lsp.enable("css_variables")
 vim.lsp.enable("cssls")
 vim.lsp.enable("biome")
 vim.lsp.enable("ts_ls")
+vim.lsp.enable("jdtls")
 --}}}
 --Lua{{{
 vim.lsp.config("lua_ls", {
@@ -488,23 +489,70 @@ vim.lsp.config("ts_ls", {
 			return vim.NIL
 		end,
 	},
-  on_attach = function(client, bufnr)
-    -- ts_ls provides `source.*` code actions that apply to the whole file. These only appear in
-    -- `vim.lsp.buf.code_action()` if specified in `context.only`.
-    vim.api.nvim_buf_create_user_command(bufnr, 'LspTypescriptSourceAction', function()
-      local source_actions = vim.tbl_filter(function(action)
-        return vim.startswith(action, 'source.')
-      end, client.server_capabilities.codeActionProvider.codeActionKinds)
+	on_attach = function(client, bufnr)
+		-- ts_ls provides `source.*` code actions that apply to the whole file. These only appear in
+		-- `vim.lsp.buf.code_action()` if specified in `context.only`.
+		vim.api.nvim_buf_create_user_command(bufnr, "LspTypescriptSourceAction", function()
+			local source_actions = vim.tbl_filter(function(action)
+				return vim.startswith(action, "source.")
+			end, client.server_capabilities.codeActionProvider.codeActionKinds)
 
-      vim.lsp.buf.code_action({
-        context = {
-          only = source_actions,
-        },
-      })
-    end, {})
-  end,
+			vim.lsp.buf.code_action({
+				context = {
+					only = source_actions,
+				},
+			})
+		end, {})
+	end,
 })
+--}}}
+--Jdtls{{{
+local function get_jdtls_cache_dir()
+  return vim.fn.stdpath('cache') .. '/jdtls'
+end
 
+local function get_jdtls_workspace_dir()
+  return get_jdtls_cache_dir() .. '/workspace'
+end
+
+local function get_jdtls_jvm_args()
+  local env = os.getenv('JDTLS_JVM_ARGS')
+  local args = {}
+  for a in string.gmatch((env or ''), '%S+') do
+    local arg = string.format('--jvm-arg=%s', a)
+    table.insert(args, arg)
+  end
+  return unpack(args)
+end
+vim.lsp.config("jdtls", {
+	cmd = function(dispatchers, config)
+		local workspace_dir = get_jdtls_workspace_dir()
+		local data_dir = workspace_dir
+
+		if config.root_dir then
+			data_dir = data_dir .. "/" .. vim.fn.fnamemodify(config.root_dir, ":p:h:t")
+		end
+
+		local config_cmd = {
+			"jdtls",
+			"-data",
+			data_dir,
+			get_jdtls_jvm_args(),
+		}
+
+		return vim.lsp.rpc.start(config_cmd, dispatchers, {
+			cwd = config.cmd_cwd,
+			env = config.cmd_env,
+			detached = config.detached,
+		})
+	end,
+	filetypes = { "java" },
+	root_markers = {
+			{ "mvnw", "gradlew", "build.gradle", "build.gradle.kts", ".git" },
+			{ "build.xml", "pom.xml", "settings.gradle", "settings.gradle.kts" },
+	},
+	init_options = {},
+})
 --}}}
 --}}}
 --Colorizer{{{
@@ -617,7 +665,7 @@ vim.keymap.set("n", "<leader>fh", telescopeBuiltin.help_tags, { desc = "Telescop
 -- Treesitter config and setup{{{
 require("nvim-treesitter.configs").setup({
 	-- A list of parser names, or "all" (the listed parsers MUST always be installed)
-	ensure_installed = { "lua", "markdown", "markdown_inline" },
+	ensure_installed = { "lua", "markdown", "markdown_inline", "vim", "vimdoc" },
 
 	-- Install parsers synchronously (only applied to `ensure_installed`)
 	sync_install = false,
@@ -664,9 +712,11 @@ require("conform").setup({
 		cpp = { "clang-format" },
 		cs = { "clang-format" },
 		c = { "clang-format" },
-		css = {"biome","format"},
-		javascript = {"biome","format"},
-		html = {"htmlbeautifier"}
+		java = {"clang-format"},
+		css = { "biome", "format" },
+		javascript = { "biome", "format" },
+		html = { "htmlbeautifier" },
+		markdown = { "mdformat" },
 	},
 })
 

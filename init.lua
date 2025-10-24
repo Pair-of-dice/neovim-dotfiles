@@ -128,7 +128,7 @@ vim.api.nvim_create_user_command("Javarun", function()
 	local filename = vim.api.nvim_buf_get_name(0)
 	vim.cmd("w")
 	vim.cmd("split")
-	vim.cmd("terminal java "..filename)
+	vim.cmd("terminal java " .. filename)
 end, { desc = "Run the current Java buffer" })
 --}}}
 --Custom keybinds{{{
@@ -344,7 +344,7 @@ vim.lsp.config("tombi", {
 --html{{{
 vim.lsp.config("html", {
 	cmd = { "vscode-html-language-server", "--stdio" },
-	filetyps = { "html", "templ" },
+	filetypes = { "html", "templ" },
 	init_options = {
 		configurationSection = { "html", "css", "javascript" },
 		embeddedLanguages = {
@@ -518,21 +518,21 @@ vim.lsp.config("ts_ls", {
 --}}}
 --Jdtls{{{
 local function get_jdtls_cache_dir()
-  return vim.fn.stdpath('cache') .. '/jdtls'
+	return vim.fn.stdpath("cache") .. "/jdtls"
 end
 
 local function get_jdtls_workspace_dir()
-  return get_jdtls_cache_dir() .. '/workspace'
+	return get_jdtls_cache_dir() .. "/workspace"
 end
 
 local function get_jdtls_jvm_args()
-  local env = os.getenv('JDTLS_JVM_ARGS')
-  local args = {}
-  for a in string.gmatch((env or ''), '%S+') do
-    local arg = string.format('--jvm-arg=%s', a)
-    table.insert(args, arg)
-  end
-  return unpack(args)
+	local env = os.getenv("JDTLS_JVM_ARGS")
+	local args = {}
+	for a in string.gmatch((env or ""), "%S+") do
+		local arg = string.format("--jvm-arg=%s", a)
+		table.insert(args, arg)
+	end
+	return unpack(args)
 end
 vim.lsp.config("jdtls", {
 	cmd = function(dispatchers, config)
@@ -558,8 +558,8 @@ vim.lsp.config("jdtls", {
 	end,
 	filetypes = { "java" },
 	root_markers = {
-			{ "mvnw", "gradlew", "build.gradle", "build.gradle.kts", ".git" },
-			{ "build.xml", "pom.xml", "settings.gradle", "settings.gradle.kts" },
+		{ "mvnw", "gradlew", "build.gradle", "build.gradle.kts", ".git" },
+		{ "build.xml", "pom.xml", "settings.gradle", "settings.gradle.kts" },
 	},
 	init_options = {},
 })
@@ -720,16 +720,15 @@ require("conform").setup({
 	formatters_by_ft = {
 		lua = { "stylua" },
 		cpp = { "clang-format" },
-		cs = { "clang-format" },
+		cs = { "clang-format"},
 		c = { "clang-format" },
-		java = {"clang-format"},
+		java = { "clang-format" },
 		css = { "biome", "format" },
 		javascript = { "biome", "format" },
 		html = { "htmlbeautifier" },
 		markdown = { "mdformat" },
 	},
 })
-
 --}}}
 --Luasnip configuration{{{
 local ls = require("luasnip")
